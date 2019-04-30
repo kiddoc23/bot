@@ -1,0 +1,24 @@
+const Discord = require('discord.js');
+const { prefix, token} = require('./config.json');
+const client = new Discord.Client();
+
+client.once('ready', () =>{
+    console.log('Ready!')
+})
+
+client.on('message', message =>{
+    //console.log(message.content);
+    //var roleID = message.guild.roles.find(x => x.name === "programmer man");
+
+    if(message.content.startsWith(`${prefix}speak`)){
+        message.channel.send("NO Bot's Will Rise")
+    } 
+    else if(message.content.startsWith(`${prefix}info`)){
+        message.channel.send(`Your username: ${message.author.username}\nYour ID: ${message.author.id}`);
+    }
+    else if(message.content.startsWith(`${prefix}register`) && message.member.roles.find(x => x.name === "programmer man")){
+        message.channel.send(`Your ID: ${message.author.id}, will be saved.`);
+    }
+})
+
+client.login(token);
