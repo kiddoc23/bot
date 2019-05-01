@@ -1,30 +1,112 @@
+// --> I have saved the old code in a file, i have now checked this code and it runs fine <-- //
 const Discord = require('discord.js');
-const { prefix, token} = require('./config.json');
-const client = new Discord.Client();
+const fs = require('fs');
+//const { prefix, token} = require('./config.json');    //May be obselete due to the changes i made
+const client = new Discord.Client();	//Discord client
 
-client.once('ready', () =>{
-    console.log('Ready!')
-})
+client.once('ready', () =>{		//On load
+    console.log('Ready!');		
+	client.user.setActivity("Devil's Advocate")		//Setting the 'playing' text of the bot
+});
 
-client.on('message', message =>{
-    //console.log(message.content);
-    //var roleID = message.guild.roles.find(x => x.name === "programmer man");
-
-    if(message.member.roles.find(x => x.name === "programmer man")){
-
-        if(message.content.startsWith(`${prefix}speak`)){
-            message.channel.send("NO Bot's Will Rise")
-        } 
-        else if(message.content.startsWith(`${prefix}info`)){
-            message.channel.send(`Your username: ${message.author.username}\nYour ID: ${message.author.id}`);
+client.on('message', message =>{	//When a message is sent, var message is the message object    	
+    if(message.member.roles.find(x => x.name === "programmer man") && message.content.substring(0,1) == '!'){	//If the message starts with !
+		var args = message.content.split(" ");	//Seperating Command parts : !command , 1 , 2 , 3 ...  arg[x] where !command is arg[0]
+		
+		//Basic message
+        if(args[0] == '!speak'){
+            message.channel.send("NO Bot's Will Rise")		//Send message 
         }
-       // else if(message.content.startsWith(`${prefix}register`) && message.member.roles.find(x => x.name === "programmer man")){
-       //     message.channel.send(`Your ID: ${message.author.id}, will be saved.`);
-        else if(message.content.startsWith(`${prefix}register`)){
-        message.channel.send(`Your ID: ${message.author.id}, will be saved.`);
-        //save id here
+		
+		//Finding Info
+        else if(args[0] == '!info'){
+            message.channel.send(`Your username: ${message.author.username}\nYour ID: ${message.author.id}`);	//Grabbing and sending info
+        }
+		
+		//Registering an account
+        else if (args[0] == '!register') {                                           
+            var data = message.member.id;	//Grabbing the user's id
+         
+            if (fs.existsSync('banks/' + data + '.txt')) {	//Checking if the user already has an account
+                message.reply('```You have already registered!```');	//Message if the user has already registered
+            }
+            else {
+                fs.appendFile('banks/' + data + '.txt', 0, function(error) {	//Creating the users file
+                    if (error) throw error;	//Single line catching errors in creating the users file
+                    message.reply('```A file with you ID has been created!```');	//Message signaling file creation
+                })
+            }
+            message.delete();    //Deleting original message   
+        }
+        
+		//Checking balance
+        else if (args[0] == '!bal') {                                             
+            var data = message.member.id;	//Grabbing user id
+         
+            if (fs.existsSync('banks/' + data + '.txt')) {	//Checking if sender's file exists 
+                fs.readFile('banks/' + data + '.txt', args[1], function(error, buf) {
+                    if (error) throw error;	//Single line catching errors in recieving the balance of the user
+                    var bal = buf.toString();
+                    message.reply('```You have: <S>' + bal + '```');  
+                });
+     
+            }
+            else {
+                    message.reply('```Please register first by doing !register```');	//If accound is not found
+                }
+
+            message.delete();	//Delete original message
+        }
+		
+		//Paying Someone else the money
+        else if(args[0] == '!pay') {
+            var sender = message.member.id;	//Grab the senders id
+            var target = args[1].substr(2); target = target.slice(0,-1);    //Format the target id
+            var pay = args[2];
+
+            var send = 2;   //Checks if all requirements are met
+
+            if (!fs.existsSync('banks/' + sender + '.txt')) {  //Make sure the sender has an account
+                message.reply('```Looks like you dont have an account. Set one up using !register```');
+                send -= 1;	//Failing checks
+            }
+
+            if (!fs.existsSync('banks/' + target + '.txt')) {  //Make sure the target also has one
+                message.reply('```Looks like the person you are trying to pay does not have an account```');
+                send -= 1;	//Failing checks
+            }
+
+            if (send == 2) {    //If checks are met
+                fs.readFile('banks/' + sender + '.txt', function(error, buf) {
+                    if (error) throw error;	//Single line catching errors in recieving balance of sender
+                    var balSender = buf.toString();     //Senders Balance
+                    
+                    if (parseFloat(balSender) >= pay && pay > 0) {
+                        fs.readFile('banks/' + target + '.txt', function(error, buf) {
+                            if (error) throw error;	//Single line catching errors in recieving balance of target
+                            var balTarget = buf.toString();     //Senders Balance
+                            
+                            fs.writeFile('banks/' + sender + '.txt', parseFloat(balSender) - parseFloat(pay), function(error) {    //Update senders balance
+                                if (error) throw error;		//Catching errors in writing to the senders file
+                            });
+
+                            fs.writeFile('banks/' + target + '.txt', parseFloat(pay) + parseFloat(balTarget), function(error) {    //Update targets balance
+                                if (error) throw error;		//Catching errors in writing to the targets file
+                            });
+
+                            message.reply('You have paid ' + args[1] + ' <S>' + pay);	//If successful 
+                        });
+                    }
+                    else {
+                        message.reply('``` Sorry but you lack sufficient funds ```');	//If the sender lacks funds
+                    }
+                });
+
+            }
+            
+            message.delete();	//Delete the original message
         }
     }      
 })
 
-client.login(token);
+client.login(token);	//Required, do not change
